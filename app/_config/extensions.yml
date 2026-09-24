@@ -1,0 +1,9 @@
+---
+Name: my-extensions
+---
+SilverStripe\Admin\LeftAndMain:
+  extensions:
+    - WhittingtonsOfDmg\SiteStatDash\Extensions\Admin\LeftAndMainHideMenuExtension
+Silverstripe\SiteConfig\SiteConfig:
+  extensions:
+    - WhittingtonsOfDmg\SiteStatDash\SiteConfig\CustomSiteConfig

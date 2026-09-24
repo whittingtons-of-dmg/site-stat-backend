@@ -1,0 +1,10 @@
+---
+Name: app-route-restrictions
+After:
+  - '#coremiddleware'
+---
+SilverStripe\Core\Injector\Injector:
+  SilverStripe\Control\Director:
+    properties:
+      Middlewares:
+        RouteRestrictionMiddleware: '%$WhittingtonsOfDmg\SiteStatDash\Middleware\PathRestrictionMiddleWare'

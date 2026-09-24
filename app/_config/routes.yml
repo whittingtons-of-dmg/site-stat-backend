@@ -1,0 +1,9 @@
+---
+Name: my-routes
+After:
+  - '#rootroutes'
+  - '#coreroutes'
+---
+SilverStripe\Control\Director:
+  rules:
+    '/api/v1': 'WhittingtonsOfDmg\SiteStatDash\controllers\ApiController'
