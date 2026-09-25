@@ -13,9 +13,9 @@ class QueueBucket extends DataObject
     private static string $description = '';
 
     private array $priority_list = [
-        'High'      => 300,
-        'Medium'    => 600,
-        'Low'       => 900,
+        300 => 'High',
+        600 => 'Medium',
+        900 => 'Low',
     ];
 
     private static array $db = [

@@ -9,7 +9,6 @@ use SilverStripe\Forms\FieldList;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\ReadonlyField;
-use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\TabSet;
 use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\UrlField;
@@ -143,17 +142,24 @@ class Site extends DataObject
             CheckboxField_Readonly::create('Https', 'HTTPS Enabled'),
             ReadonlyField::create('AvgResponseTime', 'Avg. Response Time')->setDescription('In seconds'),
             DropdownField::create('ParentID', 'Parent Server', Server::get()->map())->setEmptyString('Pick a server'),
-            DropdownField::create('BucketID', 'Bucket', $buckets)->setEmptyString('Pick a bucket'),
             DropdownField::create('AccountOwnerID', 'Account Owner', AccountExecutive::get()->map())->setEmptyString('Pick an account owner'),
         ]);
 
-        $fields->addFieldsToTab('Root.Notes', [
-            GridField::create('Notes', 'Notes', Note::get(), GridFieldConfig_RecordEditor::create()),
-        ]);
+        if ($this->ParentID) {
+            $fields->addFieldsToTab('Root.Main', [
+                DropdownField::create('BucketID', 'Bucket', $buckets)->setEmptyString('Pick a bucket'),
+            ], 'ParentID');
+        }
 
-        $fields->addFieldsToTab('Root.Responses', [
-            GridField::create('Responses', 'Responses', Response::get(), GridFieldConfig_RecordEditor::create()),
-        ]);
+        if ($this->isInDB()) {
+            $fields->addFieldsToTab('Root.Notes', [
+                GridField::create('Notes', 'Notes', Note::get(), GridFieldConfig_RecordEditor::create()),
+            ]);
+
+            $fields->addFieldsToTab('Root.Responses', [
+                GridField::create('Responses', 'Responses', Response::get(), GridFieldConfig_RecordEditor::create()),
+            ]);
+        }
 
         return $fields;
     }
@@ -165,7 +171,10 @@ class Site extends DataObject
         if (!$this->Domain)
             $result->addFieldError('Domain', 'Domain is required');
 
-        if (preg_match('/^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,}$/',$this->Domain))
+        if (!$this->ParentID)
+            $result->addFieldError('ParentID', 'Parent Server is required');
+
+        if (preg_match('/^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,}$/', $this->Domain))
             $result->addFieldError('Domain', 'Please exclude https://, http://, paths, or trailing slashes.');
 
         return $result;

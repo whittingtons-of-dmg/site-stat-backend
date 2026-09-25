@@ -22,6 +22,12 @@ class Note extends DataObject
         'Owner' => Site::class,
     ];
 
+    private static array $summary_fields = [
+        'Title',
+        'Content',
+        'Created',
+    ];
+
     public function getCMSFields(): ?FieldList
     {
         $fields = parent::getCMSFields();
