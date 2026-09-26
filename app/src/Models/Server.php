@@ -2,7 +2,10 @@
 
 namespace WhittingtonsOfDmg\SiteStatDash\Models;
 
+use SilverStripe\Forms\GridField\GridField;
+use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\ORM\DataObject;
+use UndefinedOffset\SortableGridField\Forms\GridFieldSortableRows;
 
 class Server extends DataObject
 {
@@ -20,6 +23,30 @@ class Server extends DataObject
     private static array $has_many = [
         'Addresses'     => Address::class,
         'Sites'         => Site::class,
-        'Buckets'       => QueueBucket::class,
     ];
+
+    public function getCMSFields()
+    {
+        $fields = parent::getCMSFields();
+
+        $fields->removeByName([
+            'Sites'
+        ]);
+
+        $fields->addFieldsToTab('Root.Main', [
+            GridField::create('Sites',
+                'Sites',
+                $this->Sites(),
+                GridFieldConfig_RecordEditor::create()
+                    ->addComponent(new GridFieldSortableRows('Priority'))
+            ),
+        ]);
+
+        return $fields;
+    }
+
+    public function getSitesUrlMap(): false|array
+    {
+        return $this->Sites()?->map('ID', 'HomePageUrl') ?? false;
+    }
 }

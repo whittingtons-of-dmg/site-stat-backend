@@ -20,6 +20,9 @@ class Site extends DataObject
     private static string $singular_name = 'Website';
     private static string $plural_name = 'Websites';
     private static string $description = '';
+    private static string $default_sort = 'Priority';
+    private static string $primary_protocol = 'https://';
+    private static string $fallback_protocol = 'http://';
 
     private array $cms_list = [
         'WordPress' => 'wordpress',
@@ -86,7 +89,8 @@ class Site extends DataObject
     ];
 
     private static array $db = [
-        'Domain'            => 'Varchar(255)',
+        'Priority'          => 'Int',
+        'HomePageUrl'       => 'Varchar(255)',
         'Type'              => 'Varchar(255)',
         'SoftwareVersion'   => 'Varchar(255)',
         'CMS'               => 'Varchar(255)',
@@ -99,7 +103,6 @@ class Site extends DataObject
     ];
 
     private static array $has_one = [
-        'Bucket'            => QueueBucket::class,
         'Parent'            => Server::class,
         'AccountOwner'      => AccountExecutive::class,
     ];
@@ -107,6 +110,10 @@ class Site extends DataObject
     private static array $has_many = [
         'Responses'         => Response::class,
         'Notes'             => Note::class,
+    ];
+
+    private static array $indexes = [
+        'HomePageUrl' => true,
     ];
 
     public function canCreate($member = null, $context = []): bool
@@ -128,10 +135,8 @@ class Site extends DataObject
     {
         $fields = FieldList::create(TabSet::create('Root'));
 
-        $buckets =  $this->Parent()->Buckets()->map() ?? QueueBucket::get()->map();
-
         $fields->addFieldsToTab('Root.Main', [
-            TextField::create('Domain')->setAttribute('placeholder', 'www.yoursite.com'),
+            TextField::create('HomePageUrl', 'Home Page URL')->setAttribute('placeholder', 'www.yoursite.com'),
             TextField::create('Type', 'Software')->setAttribute('placeholder', 'PHP'),
             TextField::create('SoftwareVersion', 'Version')->setAttribute('placeholder', '8.4'),
             DropDownField::create('CMS', 'CMS', $this->cms_list)->setEmptyString('Select CMS'),
@@ -144,12 +149,6 @@ class Site extends DataObject
             DropdownField::create('ParentID', 'Parent Server', Server::get()->map())->setEmptyString('Pick a server'),
             DropdownField::create('AccountOwnerID', 'Account Owner', AccountExecutive::get()->map())->setEmptyString('Pick an account owner'),
         ]);
-
-        if ($this->ParentID) {
-            $fields->addFieldsToTab('Root.Main', [
-                DropdownField::create('BucketID', 'Bucket', $buckets)->setEmptyString('Pick a bucket'),
-            ], 'ParentID');
-        }
 
         if ($this->isInDB()) {
             $fields->addFieldsToTab('Root.Notes', [
@@ -168,15 +167,25 @@ class Site extends DataObject
     {
         $result = parent::validate();
 
-        if (!$this->Domain)
-            $result->addFieldError('Domain', 'Domain is required');
+        if (!$this->HomePageUrl)
+            $result->addFieldError('HomePageUrl', 'Home Page Url is required');
+
+        if (Site::get()->filter('HomePageUrl', $this->HomePageUrl)->first())
+            $result->addFieldError('HomePageUrl', 'Homepage URL already exists');
 
         if (!$this->ParentID)
             $result->addFieldError('ParentID', 'Parent Server is required');
 
-        if (preg_match('/^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,}$/', $this->Domain))
-            $result->addFieldError('Domain', 'Please exclude https://, http://, paths, or trailing slashes.');
-
         return $result;
+    }
+
+    public function getPrimaryProtocol(): string
+    {
+        return self::$primary_protocol;
+    }
+
+    public function getFallbackProtocol(): string
+    {
+        return self::$fallback_protocol;
     }
 }

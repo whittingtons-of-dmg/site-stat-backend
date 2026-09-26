@@ -14,11 +14,17 @@ class Response extends DataObject
     private static array $db = [
         'StatCode'          => 'Int',
         'Timestamp'         => 'Datetime',
-        'Message'           => 'Varchar(500)',
+        'Message'           => 'Varchar(255)',
+        'LocationHeader'    => 'Varchar(255)',
+        'ServerHeader'      => 'Varchar(255)',
+        'XHeaders'          => 'Varchar(500)',
         'SecondsTillReply'  => 'Int',
         'HTTPS'             => 'Boolean',
+        'WWW'               => 'Boolean',
         'TimedOut'          => 'Boolean',
         'PingFailed'        => 'Boolean',
+        'Redirected'        => 'Boolean',
+
         // DNS fields
         'Registrar'         => 'Varchar(255)',
         'DnsTypeA'          => 'Varchar(255)',
@@ -35,7 +41,7 @@ class Response extends DataObject
         'Site' => Site::class,
     ];
 
-    public static function fromGuzzle(): self
+    public static function fromGuzzle(array $responseObj): self
     {
         $response = new self();
 

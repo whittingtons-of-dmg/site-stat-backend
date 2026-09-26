@@ -12,11 +12,17 @@ class Address extends DataObject
     private static string $description = '';
 
     private static array $db = [
-        'IPv4Address' => 'Varchar(255)',
+        'IPv4Address'   => 'Varchar(255)',
+        'Primary'       => 'Boolean',
     ];
 
     private static array $has_one = [
         'Server' => Server::class,
+    ];
+
+    private static array $summary_fields = [
+        'getTitle' => 'Title',
+        'Primary.Nice' => 'Primary',
     ];
 
     public function getTitle(): string

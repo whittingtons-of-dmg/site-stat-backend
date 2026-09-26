@@ -2,9 +2,9 @@
 
 namespace WhittingtonsOfDmg\SiteStatDash\Models;
 
+use SilverStripe\Core\Validation\ValidationResult;
 use SilverStripe\Forms\EmailField;
 use SilverStripe\Forms\FieldList;
-use SilverStripe\Forms\Tab;
 use SilverStripe\Forms\TabSet;
 use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\DataObject;
@@ -40,5 +40,18 @@ class AccountExecutive extends DataObject
         ]);
 
         return $fields;
+    }
+
+    public function validate(): ValidationResult
+    {
+        $result = parent::validate();
+
+        if (!$this->Name)
+            $result->addFieldError('Name', 'Name is required.');
+
+        if (!$this->Email)
+            $result->addFieldError('Email', 'Email is required.');
+
+        return $result;
     }
 }
