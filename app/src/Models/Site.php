@@ -24,77 +24,9 @@ class Site extends DataObject
     private static string $primary_protocol = 'https://';
     private static string $fallback_protocol = 'http://';
 
-    private array $cms_list = [
-        'WordPress' => 'wordpress',
-        'SilverStripe CMS' => 'silverstripe-cms',
-        'Drupal' => 'drupal',
-        'Joomla' => 'joomla',
-        'Magento' => 'magento',
-        'Sitecore' => 'sitecore',
-        'BigCommerce' => 'bigcommerce',
-        'Webflow' => 'webflow',
-        'Shopify' => 'shopify',
-        'Wix' => 'wix',
-        'Squarespace' => 'squarespace',
-        'Contentful' => 'contentful',
-        'Sanity' => 'sanity',
-        'Strapi' => 'strapi',
-        'Payload CMS' => 'payload',
-        'Directus' => 'directus',
-        'Storyblok' => 'storyblok',
-        'Ghost' =>  'ghost',
-        'Prismic' => 'prismic',
-        'Hygraph' => 'hygraph',
-        'DatoCMS' => 'datocms',
-        'Builder.io' => 'builderio',
-        'TinaCMS' => 'tinacms',
-        'Decap CMS' => 'decap-cms',
-        'Craft CMS' => 'craft-cms',
-        'Statamic' => 'statamic',
-        'Umbraco' => 'umbraco',
-        'TYPO3' => 'typo3',
-        'PrestaShop' => 'prestashop',
-    ];
-
-    private array $framework_list = [
-        'SilverStripe' => 'silverstripe',
-        'Next.js' => 'nextjs',
-        'React' => 'react',
-        'Vue.js' => 'vue',
-        'Nuxt' => 'nuxt',
-        'Angular' => 'angular',
-        'Svelte' => 'svelte',
-        'SvelteKit' => 'sveltekit',
-        'Astro' => 'astro',
-        'React Router' => 'react-router',
-        'Remix' => 'remix',
-        'SolidJS' => 'solidjs',
-        'SolidStart' => 'solidstart',
-        'Qwik' => 'qwik',
-        'Gatsby' => 'gatsby',
-        'Eleventy' => 'eleventy',
-        'Hugo' => 'hugo',
-        'Jekyll' => 'jekyll',
-        'TanStack Start' => 'tanstack-start',
-        'Laravel' => 'laravel',
-        'Ruby on Rails' => 'rails',
-        'Django' => 'django',
-        'Flask' => 'flask',
-        'ASP.NET Core' => 'aspnet-core',
-        'Spring Boot' => 'spring-boot',
-        'Express' => 'express',
-        'Fastify' => 'fastify',
-        'NestJS' => 'nestjs',
-        'Hono' => 'hono',
-    ];
-
     private static array $db = [
         'Priority'          => 'Int',
         'HomePageUrl'       => 'Varchar(255)',
-        'Type'              => 'Varchar(255)',
-        'SoftwareVersion'   => 'Varchar(255)',
-        'CMS'               => 'Varchar(255)',
-        'Framework'         => 'Varchar(255)',
         'AccountCode'       => 'Varchar(255)',
         'RepoUri'           => 'Varchar(500)',
         'ServerRepoPath'    => 'Varchar(500)',
@@ -105,6 +37,9 @@ class Site extends DataObject
     private static array $has_one = [
         'Parent'            => Server::class,
         'AccountOwner'      => AccountExecutive::class,
+        'ServerVersion'     => VersionNumber::class,
+        'CMSVersion'        => VersionNumber::class,
+        'FrameworkVersion'  => VersionNumber::class,
     ];
 
     private static array $has_many = [
@@ -116,9 +51,22 @@ class Site extends DataObject
         'HomePageUrl' => true,
     ];
 
+    private static array $summary_fields = [
+        'getTitle' => 'Title',
+    ];
+
+    private static array $many_many = [
+        'Packages'      => SiteSoftware::class,
+    ];
+
     public function canCreate($member = null, $context = []): bool
     {
         return (bool)Server::get()->first();
+    }
+
+    public function getTitle(): string
+    {
+        return $this->HomePageUrl;
     }
 
     public function getAvgResponseTime()
@@ -135,12 +83,14 @@ class Site extends DataObject
     {
         $fields = FieldList::create(TabSet::create('Root'));
 
+        $versionsList = VersionNumber::get()->Map('ID', 'getTitle') ?? [];
+
         $fields->addFieldsToTab('Root.Main', [
             TextField::create('HomePageUrl', 'Home Page URL')->setAttribute('placeholder', 'www.yoursite.com'),
             TextField::create('Type', 'Software')->setAttribute('placeholder', 'PHP'),
-            TextField::create('SoftwareVersion', 'Version')->setAttribute('placeholder', '8.4'),
-            DropDownField::create('CMS', 'CMS', $this->cms_list)->setEmptyString('Select CMS'),
-            DropDownField::create('Framework', 'Framework', $this->framework_list)->setEmptyString('Select Framework'),
+            DropDownField::create('ServerVersionID', 'Server Version', $versionsList)->setEmptyString('Select Server Ver.'),
+            DropDownField::create('CMSVersionID', 'CMS Version', $versionsList)->setEmptyString('Select CMS'),
+            DropDownField::create('FrameworkVersionID', 'Framework Version',$versionsList)->setEmptyString('Select Framework'),
             TextField::create('AccountCode', 'Account Code')->setAttribute('placeholder', 'KOKI-KOKI'),
             UrlField::create('RepoUri', 'Repo URI')->setAttribute('placeholder', 'https://bitbucket.com/your/repository'),
             TextField::create('ServerRepoPath', 'Server Repo Path')->setAttribute('placeholder', '~/repos/your-repository'),
@@ -170,7 +120,7 @@ class Site extends DataObject
         if (!$this->HomePageUrl)
             $result->addFieldError('HomePageUrl', 'Home Page Url is required');
 
-        if (Site::get()->filter('HomePageUrl', $this->HomePageUrl)->first())
+        if (!$this->isInDB() && Site::get()->filter('HomePageUrl', $this->HomePageUrl)->first())
             $result->addFieldError('HomePageUrl', 'Homepage URL already exists');
 
         if (!$this->ParentID)

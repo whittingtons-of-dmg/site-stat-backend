@@ -2,9 +2,17 @@
 
 namespace WhittingtonsOfDmg\SiteStatDash\Models;
 
+use SilverStripe\Forms\CheckboxField;
+use SilverStripe\Forms\DateField;
+use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\GridField\GridField;
+use SilverStripe\Forms\GridField\GridFieldAddNewButton;
 use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
+use SilverStripe\Forms\GridField\GridFieldDataColumns;
+use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\DataObject;
+use Symbiote\GridFieldExtensions\GridFieldAddNewInlineButton;
+use Symbiote\GridFieldExtensions\GridFieldEditableColumns;
 use UndefinedOffset\SortableGridField\Forms\GridFieldSortableRows;
 
 class Server extends DataObject
@@ -20,9 +28,17 @@ class Server extends DataObject
         'Provider'      => 'Varchar(255)',
     ];
 
+    private static array $has_one = [
+        'ServerOS'     => ServerSoftware::class,
+    ];
+
     private static array $has_many = [
         'Addresses'     => Address::class,
         'Sites'         => Site::class,
+    ];
+
+    private static array $many_many = [
+        'Packages'      => ServerSoftware::class,
     ];
 
     public function getCMSFields()
@@ -30,15 +46,48 @@ class Server extends DataObject
         $fields = parent::getCMSFields();
 
         $fields->removeByName([
-            'Sites'
+            'Sites',
+            'Addresses',
         ]);
 
+        $inlineConfig = GridFieldConfig_RecordEditor::create();
+        $inlineConfig->removeComponentsByType([GridFieldDataColumns::class, GridFieldAddNewButton::class]);
+
+        // 3. Instantiate and configure editable columns
+        $editableColumns = new GridFieldEditableColumns();
+
+        $editableColumns->setDisplayFields([
+            'IPv4Address' => [
+                'title' => 'IPv4 Address',
+                'field' => TextField::class
+            ],
+            'Primary' => [
+                'title' => 'Primary',
+                'field' => CheckboxField::class
+            ],
+        ]);
+
+        $inlineConfig->addComponent($editableColumns);
+
+        // 5. Optional: Add a button to insert rows directly inline
+        $inlineConfig->addComponent(new GridFieldAddNewInlineButton());
+
+        $versionsList = VersionNumber::get()->Map('ID', 'getTitle') ?? [];
+
         $fields->addFieldsToTab('Root.Main', [
+            DropdownField::create('ServerOSID', 'Server OS', $versionsList)->setEmptyString('OS Version'),
             GridField::create('Sites',
                 'Sites',
                 $this->Sites(),
                 GridFieldConfig_RecordEditor::create()
                     ->addComponent(new GridFieldSortableRows('Priority'))
+            ),
+        ]);
+        $fields->addFieldsToTab('Root.Addresses', [
+            GridField::create('Addresses',
+                'Addresses',
+                $this->Addresses(),
+                $inlineConfig
             ),
         ]);
 

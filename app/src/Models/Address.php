@@ -2,6 +2,8 @@
 
 namespace WhittingtonsOfDmg\SiteStatDash\Models;
 
+use SilverStripe\Core\Validation\ValidationResult;
+use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\DataObject;
 
 class Address extends DataObject
@@ -27,6 +29,40 @@ class Address extends DataObject
 
     public function getTitle(): string
     {
-        return $this->Title;
+        return $this->IPv4Address;
+    }
+
+    public function getCMSFields()
+    {
+        $fields = parent::getCMSFields();
+
+        $fields->removeByName([
+            'ServerID',
+            'IPv4Address',
+        ]);
+
+        $fields->addFieldsToTab('Root.Main', [
+            TextField::create('IPv4Address', 'IPv4 Address')
+        ], 'Primary');
+
+        return $fields;
+    }
+
+    public function validate(): ValidationResult
+    {
+        $result = parent::validate();
+
+        $primary = $this->Server()->Addresses()->filter('Primary', true)->first()->ID;
+
+        if (!$this->IPv4Address)
+            $result->addFieldError('IPv4Address', 'IPv4 Address is required.');
+
+        if (!preg_match('/^(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)){3}$/', $this->IPv4Address))
+            $result->addFieldError('IPv4Address', 'Invalid IPv4 Address');
+
+        if ($primary && $primary !== $this->ID)
+            $result->addFieldError('Addresses', 'Primary address already set');
+
+        return $result;
     }
 }
