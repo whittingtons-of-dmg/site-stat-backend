@@ -2,6 +2,7 @@
 
 namespace WhittingtonsOfDmg\SiteStatDash\Models;
 
+use SilverStripe\Config\MergeStrategy\Priority;
 use SilverStripe\Core\Validation\ValidationResult;
 use SilverStripe\Forms\CheckboxField_Readonly;
 use SilverStripe\Forms\DropdownField;
@@ -20,18 +21,20 @@ class Site extends DataObject
     private static string $singular_name = 'Website';
     private static string $plural_name = 'Websites';
     private static string $description = '';
-    private static string $default_sort = 'Priority';
+    private static string $default_sort = 'SortOrder';
     private static string $primary_protocol = 'https://';
-    private static string $fallback_protocol = 'http://';
+    private static string $default_protocol = 'http://';
 
     private static array $db = [
-        'Priority'          => 'Int',
+        'SortOrder'          => 'Int',
+        'Priority'          => 'Enum(["high", "medium", "low"], "medium")',
         'HomePageUrl'       => 'Varchar(255)',
         'AccountCode'       => 'Varchar(255)',
         'RepoUri'           => 'Varchar(500)',
         'ServerRepoPath'    => 'Varchar(500)',
         'AvgResponseTime'   => 'Int',
         'Https'             => 'Boolean',
+        'Http'              => 'Boolean',
     ];
 
     private static array $has_one = [
@@ -69,6 +72,11 @@ class Site extends DataObject
         return $this->HomePageUrl;
     }
 
+    public function getDefaultUrl(): string
+    {
+        return self::$default_protocol . $this->HomePageUrl . "/";
+    }
+
     public function getAvgResponseTime()
     {
 
@@ -86,8 +94,9 @@ class Site extends DataObject
         $versionsList = VersionNumber::get()->Map('ID', 'getTitle') ?? [];
 
         $fields->addFieldsToTab('Root.Main', [
-            TextField::create('HomePageUrl', 'Home Page URL')->setAttribute('placeholder', 'www.yoursite.com'),
+            TextField::create('HomePageUrl', 'Domain')->setAttribute('placeholder', 'www.yoursite.com'),
             TextField::create('Type', 'Software')->setAttribute('placeholder', 'PHP'),
+            DropDownField::create('Priority', 'Priority', $this->dbObject('Priority')->enumValues())->setEmptyString('Select Priority'),
             DropDownField::create('ServerVersionID', 'Server Version', $versionsList)->setEmptyString('Select Server Ver.'),
             DropDownField::create('CMSVersionID', 'CMS Version', $versionsList)->setEmptyString('Select CMS'),
             DropDownField::create('FrameworkVersionID', 'Framework Version',$versionsList)->setEmptyString('Select Framework'),
@@ -120,6 +129,13 @@ class Site extends DataObject
         if (!$this->HomePageUrl)
             $result->addFieldError('HomePageUrl', 'Home Page Url is required');
 
+        if (!$this->Priority)
+            $result->addFieldError('PriorityID', 'Priority is required');
+
+        if (!preg_match('/^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,}$/', $this->HomePageUrl))
+            $result->addFieldError('HomePageUrl', 'Please omit all protocols and paths');
+
+
         if (!$this->isInDB() && Site::get()->filter('HomePageUrl', $this->HomePageUrl)->first())
             $result->addFieldError('HomePageUrl', 'Homepage URL already exists');
 
@@ -127,15 +143,5 @@ class Site extends DataObject
             $result->addFieldError('ParentID', 'Parent Server is required');
 
         return $result;
-    }
-
-    public function getPrimaryProtocol(): string
-    {
-        return self::$primary_protocol;
-    }
-
-    public function getFallbackProtocol(): string
-    {
-        return self::$fallback_protocol;
     }
 }

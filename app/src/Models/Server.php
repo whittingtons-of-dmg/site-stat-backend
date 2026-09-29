@@ -3,7 +3,6 @@
 namespace WhittingtonsOfDmg\SiteStatDash\Models;
 
 use SilverStripe\Forms\CheckboxField;
-use SilverStripe\Forms\DateField;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\GridField\GridField;
 use SilverStripe\Forms\GridField\GridFieldAddNewButton;
@@ -11,6 +10,7 @@ use SilverStripe\Forms\GridField\GridFieldConfig_RecordEditor;
 use SilverStripe\Forms\GridField\GridFieldDataColumns;
 use SilverStripe\Forms\TextField;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\HasManyList;
 use Symbiote\GridFieldExtensions\GridFieldAddNewInlineButton;
 use Symbiote\GridFieldExtensions\GridFieldEditableColumns;
 use UndefinedOffset\SortableGridField\Forms\GridFieldSortableRows;
@@ -80,7 +80,7 @@ class Server extends DataObject
                 'Sites',
                 $this->Sites(),
                 GridFieldConfig_RecordEditor::create()
-                    ->addComponent(new GridFieldSortableRows('Priority'))
+                    ->addComponent(new GridFieldSortableRows('SortOrder'))
             ),
         ]);
         $fields->addFieldsToTab('Root.Addresses', [
@@ -94,8 +94,8 @@ class Server extends DataObject
         return $fields;
     }
 
-    public function getSitesUrlMap(): false|array
+    public function getSitesUrlList(): false|HasManyList
     {
-        return $this->Sites()?->map('ID', 'HomePageUrl') ?? false;
+        return $this->Sites() ?? false;
     }
 }

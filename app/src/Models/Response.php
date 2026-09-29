@@ -2,6 +2,8 @@
 
 namespace WhittingtonsOfDmg\SiteStatDash\Models;
 
+use GuzzleHttp\Exception\RequestException;
+use Psr\Http\Message\ResponseInterface;
 use SilverStripe\ORM\DataObject;
 
 class Response extends DataObject
@@ -12,7 +14,7 @@ class Response extends DataObject
     private static string $description = '';
 
     private static array $db = [
-        'StatCode'          => 'Int',
+        'StatusCode'        => 'Int',
         'Timestamp'         => 'Datetime',
         'Message'           => 'Varchar(255)',
         'LocationHeader'    => 'Varchar(255)',
@@ -24,6 +26,7 @@ class Response extends DataObject
         'TimedOut'          => 'Boolean',
         'PingFailed'        => 'Boolean',
         'Redirected'        => 'Boolean',
+        'Failed'            => 'Boolean',
 
         // DNS fields
         'Registrar'         => 'Varchar(255)',
@@ -32,7 +35,7 @@ class Response extends DataObject
     ];
 
     private static array $summary_fields = [
-        'StatCode' => 'Status Code',
+        'StatusCode' => 'Status Code',
         'TimedOut.Nice' => 'Timed Out',
         'Failed.Nice' => 'Failed',
     ];
@@ -41,10 +44,21 @@ class Response extends DataObject
         'Site' => Site::class,
     ];
 
-    public static function fromGuzzle(array $responseObj): self
+    public static function fromGuzzleResponse(ResponseInterface $response): self
     {
-        $response = new self();
+        $newResponse = new self();
+        $newResponse->StatusCode = $response->getStatusCode();
+        $newResponse->write();
 
-        return $response;
+        return $newResponse;
+    }
+
+    public static function fromGuzzleReason(RequestException $reason): self
+    {
+        $newResponse = new self();
+        $newResponse->StatusCode = $reason->getResponse()->getStatusCode();
+        $newResponse->write();
+
+        return $newResponse;
     }
 }
