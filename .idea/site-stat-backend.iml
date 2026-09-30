@@ -115,6 +115,8 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/theseer/tokenizer" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/undefinedoffset/sortablegridfield" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/symbiote/silverstripe-gridfieldextensions" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/monovm/whois-php" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/purplepixie/phpdns" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

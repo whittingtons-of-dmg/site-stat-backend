@@ -2,8 +2,8 @@
 
 namespace WhittingtonsOfDmg\SiteStatDash\Models;
 
-use SilverStripe\Config\MergeStrategy\Priority;
 use SilverStripe\Core\Validation\ValidationResult;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CheckboxField_Readonly;
 use SilverStripe\Forms\DropdownField;
 use SilverStripe\Forms\FieldList;
@@ -14,6 +14,7 @@ use SilverStripe\Forms\TabSet;
 use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\UrlField;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\Security\Member;
 
 class Site extends DataObject
 {
@@ -22,24 +23,26 @@ class Site extends DataObject
     private static string $plural_name = 'Websites';
     private static string $description = '';
     private static string $default_sort = 'SortOrder';
-    private static string $primary_protocol = 'https://';
+    private static string $secure_protocol = 'https://';
     private static string $default_protocol = 'http://';
 
     private static array $db = [
         'SortOrder'          => 'Int',
         'Priority'          => 'Enum(["high", "medium", "low"], "medium")',
-        'HomePageUrl'       => 'Varchar(255)',
+        'Domain'            => 'Varchar(255)',
         'AccountCode'       => 'Varchar(255)',
         'RepoUri'           => 'Varchar(500)',
         'ServerRepoPath'    => 'Varchar(500)',
-        'AvgResponseTime'   => 'Int',
-        'Https'             => 'Boolean',
-        'Http'              => 'Boolean',
+        'ForceSecure'       => 'Boolean',
+        // DNS fields
+        'Registrar'         => 'Varchar(255)',
+        'DnsARecords'       => 'Varchar(255)',
+        'DnsFailed'         => 'Boolean',
     ];
 
     private static array $has_one = [
         'Parent'            => Server::class,
-        'AccountOwner'      => AccountExecutive::class,
+        'AccountOwner'      => Member::class,
         'ServerVersion'     => VersionNumber::class,
         'CMSVersion'        => VersionNumber::class,
         'FrameworkVersion'  => VersionNumber::class,
@@ -51,15 +54,15 @@ class Site extends DataObject
     ];
 
     private static array $indexes = [
-        'HomePageUrl' => true,
+        'Domain'            => true,
     ];
 
     private static array $summary_fields = [
-        'getTitle' => 'Title',
+        'getTitle'          => 'Title',
     ];
 
     private static array $many_many = [
-        'Packages'      => SiteSoftware::class,
+        'Packages'          => SiteSoftware::class,
     ];
 
     public function canCreate($member = null, $context = []): bool
@@ -69,17 +72,22 @@ class Site extends DataObject
 
     public function getTitle(): string
     {
-        return $this->HomePageUrl;
+        return $this->Domain ?? "Empty";
     }
 
-    public function getDefaultUrl(): string
+    public function getUrl(): string
     {
-        return self::$default_protocol . $this->HomePageUrl . "/";
+        return $this->ForceSecure ? $this->getSecureUrl() : $this->getDefaultUrl();
     }
 
-    public function getAvgResponseTime()
+    private function getDefaultUrl(): string
     {
+        return self::$default_protocol . $this->Domain . "/";
+    }
 
+    private function getSecureUrl(): string
+    {
+        return self::$secure_protocol . $this->Domain . "/";
     }
 
     public function getLastResponse()
@@ -94,7 +102,9 @@ class Site extends DataObject
         $versionsList = VersionNumber::get()->Map('ID', 'getTitle') ?? [];
 
         $fields->addFieldsToTab('Root.Main', [
-            TextField::create('HomePageUrl', 'Domain')->setAttribute('placeholder', 'www.yoursite.com'),
+            TextField::create('Domain')->setAttribute('placeholder', 'johndoe.com'),
+            CheckboxField::create('ForceSecure', 'Force Secure')
+                ->setDescription('Check to make sure the site check service uses the https:// protocol for this site instead of the default http://'),
             TextField::create('Type', 'Software')->setAttribute('placeholder', 'PHP'),
             DropDownField::create('Priority', 'Priority', $this->dbObject('Priority')->enumValues())->setEmptyString('Select Priority'),
             DropDownField::create('ServerVersionID', 'Server Version', $versionsList)->setEmptyString('Select Server Ver.'),
@@ -103,10 +113,8 @@ class Site extends DataObject
             TextField::create('AccountCode', 'Account Code')->setAttribute('placeholder', 'KOKI-KOKI'),
             UrlField::create('RepoUri', 'Repo URI')->setAttribute('placeholder', 'https://bitbucket.com/your/repository'),
             TextField::create('ServerRepoPath', 'Server Repo Path')->setAttribute('placeholder', '~/repos/your-repository'),
-            CheckboxField_Readonly::create('Https', 'HTTPS Enabled'),
-            ReadonlyField::create('AvgResponseTime', 'Avg. Response Time')->setDescription('In seconds'),
             DropdownField::create('ParentID', 'Parent Server', Server::get()->map())->setEmptyString('Pick a server'),
-            DropdownField::create('AccountOwnerID', 'Account Owner', AccountExecutive::get()->map())->setEmptyString('Pick an account owner'),
+            DropdownField::create('AccountOwnerID', 'Account Owner', Member::get()->map())->setEmptyString('Pick an account owner'),
         ]);
 
         if ($this->isInDB()) {
@@ -126,22 +134,36 @@ class Site extends DataObject
     {
         $result = parent::validate();
 
-        if (!$this->HomePageUrl)
-            $result->addFieldError('HomePageUrl', 'Home Page Url is required');
+        if (!$this->Domain)
+            $result->addFieldError('Domain', 'Domain name with tld is required');
 
         if (!$this->Priority)
             $result->addFieldError('PriorityID', 'Priority is required');
 
-        if (!preg_match('/^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,}$/', $this->HomePageUrl))
-            $result->addFieldError('HomePageUrl', 'Please omit all protocols and paths');
+        if (!preg_match('/^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,}$/', $this->Domain))
+            $result->addFieldError('Domain', 'Please omit all protocols and paths');
 
+        if (preg_match('/\..*\./s', $this->Domain))
+            $result->addFieldError('Domain', 'No subdomains, only domain names with a tld');
 
-        if (!$this->isInDB() && Site::get()->filter('HomePageUrl', $this->HomePageUrl)->first())
-            $result->addFieldError('HomePageUrl', 'Homepage URL already exists');
+        if (!$this->isInDB() && Site::get()->filter('Domain', $this->Domain)->first())
+            $result->addFieldError('Domain', 'Site already exists');
 
         if (!$this->ParentID)
             $result->addFieldError('ParentID', 'Parent Server is required');
 
         return $result;
+    }
+
+    public function setDNSFields(string|false $answer, string|false $belongsTo): void
+    {
+        $this->DnsFailed = !$answer;
+
+        if ($this->DnsFailed)
+            $this->DnsTypeA = $answer;
+
+        $this->Registrar = $belongsTo ?: "Lookup Failed";
+
+        $this->write();
     }
 }

@@ -11,7 +11,9 @@
         "silverstripe/login-forms": "~6.2.0@stable",
         "guzzlehttp/guzzle": "^7.15",
         "undefinedoffset/sortablegridfield": "^3.0",
-        "symbiote/silverstripe-gridfieldextensions": "^5.2"
+        "symbiote/silverstripe-gridfieldextensions": "^5.2",
+        "purplepixie/phpdns": "^2.4",
+        "monovm/whois-php": "^1.3"
     },
     "require-dev": {
         "phpunit/phpunit": "^11.3"

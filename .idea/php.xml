@@ -113,6 +113,8 @@
       <path value="$PROJECT_DIR$/vendor/embed/embed" />
       <path value="$PROJECT_DIR$/vendor/undefinedoffset/sortablegridfield" />
       <path value="$PROJECT_DIR$/vendor/symbiote/silverstripe-gridfieldextensions" />
+      <path value="$PROJECT_DIR$/vendor/purplepixie/phpdns" />
+      <path value="$PROJECT_DIR$/vendor/monovm/whois-php" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.4">

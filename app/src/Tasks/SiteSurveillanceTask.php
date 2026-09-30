@@ -13,7 +13,7 @@ use WhittingtonsOfDmg\SiteStatDash\Service\HeartBeatService;
 
 class SiteSurveillanceTask extends BuildTask
 {
-    protected string $title = 'Site Surveillance';
+    protected string $title = 'Site Surveillance Task';
     protected static string $description = 'Ping all websites to determine their availability and uptime status';
     /**
      * @inheritDoc
@@ -21,13 +21,13 @@ class SiteSurveillanceTask extends BuildTask
     protected function execute(InputInterface $input, PolyOutput $output): int
     {
         $email = Email::create('noreply@innismagiore.com', 'web-dev@innismaggiore.com', 'Site Health Check Task: Error');
-        $filterVar = Controller::curr()->getRequest()->getVar('priority');
+        $priorityVar = Controller::curr()->getRequest()->getVar('priority');
 
-        if (!empty($filterVar)) {
+        if (!empty($priorityVar)) {
             try {
-                new HeartBeatService($filterVar)->monitor();
+                new HeartBeatService($priorityVar)->monitorByPriority();
             } catch (Exception $e) {
-                $email->setBody('Error checking refresh for Instagram access token: ' . $e->getMessage())->sendPlain();
+                $email->setBody('Error retriving HEAD requests for sites: ' . $e->getMessage())->sendPlain();
                 return Command::FAILURE;
             }
         } else {
