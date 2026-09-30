@@ -40,10 +40,10 @@ class DomainAuthorityService
     private function getA(string $question)
     {
         $authorities = [
-            'googleDNS' => "8.8.8.8",
-            'quad9DNS' => "9.9.9.9",
-            'cloudflareDNS' => "1.1.1.1",
-            'openDNS' => "208.67.222.222"
+            "8.8.8.8",
+            "9.9.9.9",
+            "1.1.1.1",
+            "208.67.222.222"
         ];
 
         $answer = false;
@@ -90,7 +90,7 @@ class DomainAuthorityService
         $whois = WhoisHandler::whois($domain);
 
         if ($whois->isValid()) {
-            $rawText = $whois->getWhoisMessage();
+            $rawText = strip_tags($whois->getWhoisMessage());
 
             // Regex to extract the registrar name from the raw text
             if (preg_match('/Registrar:\s*(.*)/i', $rawText, $matches)) {

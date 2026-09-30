@@ -27,7 +27,7 @@ class Site extends DataObject
     private static string $default_protocol = 'http://';
 
     private static array $db = [
-        'SortOrder'          => 'Int',
+        'SortOrder'         => 'Int',
         'Priority'          => 'Enum(["high", "medium", "low"], "medium")',
         'Domain'            => 'Varchar(255)',
         'AccountCode'       => 'Varchar(255)',
@@ -109,12 +109,17 @@ class Site extends DataObject
             DropDownField::create('Priority', 'Priority', $this->dbObject('Priority')->enumValues())->setEmptyString('Select Priority'),
             DropDownField::create('ServerVersionID', 'Server Version', $versionsList)->setEmptyString('Select Server Ver.'),
             DropDownField::create('CMSVersionID', 'CMS Version', $versionsList)->setEmptyString('Select CMS'),
-            DropDownField::create('FrameworkVersionID', 'Framework Version',$versionsList)->setEmptyString('Select Framework'),
+            DropDownField::create('FrameworkVersionID', 'Framework Version', $versionsList)->setEmptyString('Select Framework'),
             TextField::create('AccountCode', 'Account Code')->setAttribute('placeholder', 'KOKI-KOKI'),
             UrlField::create('RepoUri', 'Repo URI')->setAttribute('placeholder', 'https://bitbucket.com/your/repository'),
             TextField::create('ServerRepoPath', 'Server Repo Path')->setAttribute('placeholder', '~/repos/your-repository'),
             DropdownField::create('ParentID', 'Parent Server', Server::get()->map())->setEmptyString('Pick a server'),
             DropdownField::create('AccountOwnerID', 'Account Owner', Member::get()->map())->setEmptyString('Pick an account owner'),
+        ]);
+        $fields->addFieldsToTab('Root.DNS', [
+            ReadonlyField::create('Registrar'),
+            ReadonlyField::create('DnsARecords', 'A Record IP List'),
+            CheckboxField_Readonly::create('DnsFailed', 'DNS Failed'),
         ]);
 
         if ($this->isInDB()) {
@@ -159,8 +164,8 @@ class Site extends DataObject
     {
         $this->DnsFailed = !$answer;
 
-        if ($this->DnsFailed)
-            $this->DnsTypeA = $answer;
+        if (!$this->DnsFailed)
+            $this->DnsARecords = $answer;
 
         $this->Registrar = $belongsTo ?: "Lookup Failed";
 

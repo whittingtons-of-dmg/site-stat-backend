@@ -23,22 +23,23 @@ class Server extends DataObject
     private static string $description = '';
 
     private static array $db = [
-        'Title'         => 'Varchar(255)',
-        'Category'      => 'Varchar(255)',
-        'Provider'      => 'Varchar(255)',
+        'Title'             => 'Varchar(255)',
+        'Category'          => 'Varchar(255)',
+        'Provider'          => 'Varchar(255)',
     ];
 
     private static array $has_one = [
-        'ServerOS'     => ServerSoftware::class,
+        'ServerSoftware'    => ServerSoftware::class,
+        'ServerOS'          => ServerSoftware::class,
     ];
 
     private static array $has_many = [
-        'Addresses'     => Address::class,
-        'Sites'         => Site::class,
+        'Addresses'         => Address::class,
+        'Sites'             => Site::class,
     ];
 
     private static array $many_many = [
-        'Packages'      => ServerSoftware::class,
+        'Packages'          => ServerSoftware::class,
     ];
 
     public function getCMSFields()
@@ -75,6 +76,7 @@ class Server extends DataObject
         $versionsList = VersionNumber::get()->Map('ID', 'getTitle') ?? [];
 
         $fields->addFieldsToTab('Root.Main', [
+            DropdownField::create('ServerSoftwareID', 'Server Software', $versionsList)->setEmptyString('Software Version'),
             DropdownField::create('ServerOSID', 'Server OS', $versionsList)->setEmptyString('OS Version'),
             GridField::create('Sites',
                 'Sites',
