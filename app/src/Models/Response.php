@@ -28,7 +28,7 @@ class Response extends DataObject
         'Timestamp'         => 'Datetime',
         'Message'           => 'Varchar(255)',
         'ReasonPhrase'      => 'Varchar(20)',
-        'StartProtocol'     => 'Varchar(10)',
+        'Protocol'          => 'Varchar(10)',
         'ProtocolVer'       => 'Varchar(10)',
         'RedirectLocation'  => 'Varchar(100)',
         'HTTPS'             => 'Boolean',
@@ -58,7 +58,7 @@ class Response extends DataObject
                 DatetimeField::create('Timestamp')->setReadonly(true),
                 TextareaField::create('Message', 'Message')->setReadonly(true),
                 ReadonlyField::create('ReasonPhrase', 'Reason Phrase'),
-                ReadonlyField::create('StartProtocol', 'Initial Protocol')
+                ReadonlyField::create('Protocol', 'Protocol')
                     ->setDescription('References the initial guzzle request\'s protocol'),
                 ReadonlyField::create('RedirectLocation', 'Redirect Location'),
                 CheckboxField_Readonly::create('HTTPS','HTTPS Working'),
@@ -87,7 +87,7 @@ class Response extends DataObject
      * @throws \DateMalformedStringException
      * @throws ValidationException
      */
-    public static function fromGuzzleResponse(ResponseInterface|RequestException|ConnectException $response, bool $httpsForced): self
+    public static function fromGuzzleResponse(ResponseInterface|RequestException|ConnectException $response, Site $site): self
     {
         $newResponse = new self();
         $message = "";
@@ -105,23 +105,25 @@ class Response extends DataObject
             $newResponse->Failed = true;
         } else {
             $statusCode = $response->getStatusCode();
+            $reasonPhrase = $response->getReasonPhrase();
             $redirected = $response->getStatusCode() === 301 || $response->getStatusCode() === 302;
             $protocolVersion = $response->getProtocolVersion();
-            $https = $httpsForced && ($response->getStatusCode() === 200);
+            $https = $site->ForceSecure && ($response->getStatusCode() === 200);
             $location = $response->getHeader('Location')[0];
-            $locationHttps = str_starts_with($location, 'https://');
 
             if ($location) {
+                $locationHttps = str_starts_with($location, 'https://');
                 $redirectResponse = HeartBeatService::getLocationStatus($location);
                 $https = $locationHttps && ($redirectResponse->getStatusCode() === 200);
                 $failed = $redirectResponse->getStatusCode() !== 200;
                 $statusCode = $redirectResponse->getStatusCode();
                 $protocolVersion = $redirectResponse->getProtocolVersion();
+                $reasonPhrase = $redirectResponse->getReasonPhrase();
             }
 
             $newResponse->StatusCode = $statusCode;
-            $newResponse->ReasonPhrase = $response->getReasonPhrase();
-            $newResponse->StartProtocol = $httpsForced ? 'https://' : 'http://';
+            $newResponse->ReasonPhrase = $reasonPhrase;
+            $newResponse->Protocol = $site->ForceSecure ? 'https://' : 'http://';
             $newResponse->ProtocolVer = $protocolVersion;
             $newResponse->Message = $message;
             $newResponse->RedirectLocation = $location;

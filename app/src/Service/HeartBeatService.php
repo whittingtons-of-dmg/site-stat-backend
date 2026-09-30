@@ -49,20 +49,21 @@ class HeartBeatService
         $concurrency = SiteConfig::current_site_config()->Concurrency ?? 5;
 
         $client = new Client(['allow_redirects' => false]);
-
-        $requests = function () {
+        $idMap = [];
+        $requests = function () use (&$idMap) {
             foreach ($this->queue as $site) {
+                $idMap[] = $site->ID;
                 yield new Request('HEAD', $site->getUrl());
             }
         };
 
         return new Pool($client, $requests(), [
             'concurrency' => $concurrency,
-            'fulfilled' => function (Response $response, $index) {
-                $this->handleGuzzleResponse($response, $index);
+            'fulfilled' => function (Response $response, $index) use (&$idMap) {
+                $this->handleGuzzleResponse($response, $index, $idMap);
             },
-            'rejected' => function (RequestException|ConnectException $reason, $index) {
-                $this->handleGuzzleResponse($reason, $index);
+            'rejected' => function (RequestException|ConnectException $reason, $index) use (&$idMap)  {
+                $this->handleGuzzleResponse($reason, $index, $idMap);
             },
         ]);
     }
@@ -71,10 +72,10 @@ class HeartBeatService
      * @throws \DateMalformedStringException
      * @throws ValidationException
      */
-    private function handleGuzzleResponse(Response|RequestException|ConnectException $response, int $index): void
+    private function handleGuzzleResponse(Response|RequestException|ConnectException $response, int $index, array $idMap): void
     {
-        $site = Site::get()->byID($this->queue[$index]->ID);
-        $newResponse = \WhittingtonsOfDmg\SiteStatDash\Models\Response::fromGuzzleResponse($response, $site->ForceSecure);
+        $site = Site::get()->byID($idMap[$index]);
+        $newResponse = \WhittingtonsOfDmg\SiteStatDash\Models\Response::fromGuzzleResponse($response, $site);
         $site->Responses()->Add($newResponse);
     }
 
