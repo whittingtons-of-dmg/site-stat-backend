@@ -13,6 +13,7 @@ use SilverStripe\Forms\ReadonlyField;
 use SilverStripe\Forms\TabSet;
 use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\UrlField;
+use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Security\Member;
 
@@ -38,6 +39,7 @@ class Site extends DataObject
         'Registrar'         => 'Varchar(255)',
         'DnsARecords'       => 'Varchar(255)',
         'DnsFailed'         => 'Boolean',
+        'ApexMatchesParent' => 'Boolean',
     ];
 
     private static array $has_one = [
@@ -65,6 +67,30 @@ class Site extends DataObject
         'Packages'          => SiteSoftware::class,
     ];
 
+    private function getDefaultUrl(): string
+    {
+        return self::$default_protocol . $this->Domain . "/";
+    }
+
+    private function getSecureUrl(): string
+    {
+        return self::$secure_protocol . $this->Domain . "/";
+    }
+
+    public function ipMatchesParent(): bool
+    {
+        $parentIps = $this->Parent()->Addresses()->ColumnUnique('IPv4Address');
+
+        if ($this->DnsARecords && !empty($parentIps)) {
+            $ips = explode(', ', $this->DnsARecords);
+            if (array_any($ips, fn($ip) => in_array($ip, $parentIps))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function canCreate($member = null, $context = []): bool
     {
         return (bool)Server::get()->first();
@@ -80,14 +106,9 @@ class Site extends DataObject
         return $this->ForceSecure ? $this->getSecureUrl() : $this->getDefaultUrl();
     }
 
-    private function getDefaultUrl(): string
+    public function getResponses(): ?DataList
     {
-        return self::$default_protocol . $this->Domain . "/";
-    }
-
-    private function getSecureUrl(): string
-    {
-        return self::$secure_protocol . $this->Domain . "/";
+        return Response::get()->filter('SiteID', $this->ID);
     }
 
     public function getLastResponse()
@@ -120,6 +141,7 @@ class Site extends DataObject
             ReadonlyField::create('Registrar'),
             ReadonlyField::create('DnsARecords', 'A Record IP List'),
             CheckboxField_Readonly::create('DnsFailed', 'DNS Failed'),
+            CheckboxField_Readonly::create('ApexMatchesParent', 'A Matches Parent Server'),
         ]);
 
         if ($this->isInDB()) {
@@ -128,7 +150,7 @@ class Site extends DataObject
             ]);
 
             $fields->addFieldsToTab('Root.Responses', [
-                GridField::create('Responses', 'Responses', Response::get(), GridFieldConfig_RecordEditor::create()),
+                GridField::create('Responses', 'Responses', $this->getResponses(), GridFieldConfig_RecordEditor::create()),
             ]);
         }
 
@@ -168,6 +190,8 @@ class Site extends DataObject
             $this->DnsARecords = $answer;
 
         $this->Registrar = $belongsTo ?: "Lookup Failed";
+
+        $this->ApexMatchesParent = $this->ipMatchesParent();
 
         $this->write();
     }

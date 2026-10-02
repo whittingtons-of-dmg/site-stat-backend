@@ -110,10 +110,10 @@ class Response extends DataObject
             $protocolVersion = $response->getProtocolVersion();
             $https = $site->ForceSecure && ($response->getStatusCode() === 200);
             $location = $response->getHeader('Location')[0];
-
+            $newResponse->Failed = $statusCode >= 400;
             if ($location) {
                 $locationHttps = str_starts_with($location, 'https://');
-                $redirectResponse = HeartBeatService::getLocationStatus($location);
+                $redirectResponse = HeartBeatService::headLocationStatus($location);
                 $https = $locationHttps && ($redirectResponse->getStatusCode() === 200);
                 $failed = $redirectResponse->getStatusCode() !== 200;
                 $statusCode = $redirectResponse->getStatusCode();
