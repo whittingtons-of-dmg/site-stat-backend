@@ -7,6 +7,7 @@ use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Message\ResponseInterface;
 use SilverStripe\Core\Validation\ValidationException;
+use SilverStripe\Forms\CheckboxField;
 use SilverStripe\Forms\CheckboxField_Readonly;
 use SilverStripe\Forms\DatetimeField;
 use SilverStripe\Forms\FieldList;
@@ -35,6 +36,7 @@ class Response extends DataObject
         'Redirected'        => 'Boolean',
         'ConnectionError'   => 'Boolean',
         'Failed'            => 'Boolean',
+        'IMServer'          => 'Boolean',
     ];
 
     private static array $summary_fields = [
@@ -53,6 +55,8 @@ class Response extends DataObject
 
         if ($this->StatusCode) {
             $fields->addFieldsToTab('Root.Main', [
+                CheckboxField_Readonly::create('IMServer', 'Innis Maggiore Operated Server')
+                    ->setDescription('looks for the "x-innis-server" header in the response'),
                 ReadonlyField::create('StatusCode', 'Status Code')
                     ->setDescription('Reflects the final destination\'s response status code'),
                 DatetimeField::create('Timestamp')->setReadonly(true),
@@ -111,6 +115,7 @@ class Response extends DataObject
             $https = $site->ForceSecure && ($response->getStatusCode() === 200);
             $location = $response->getHeader('Location')[0];
             $newResponse->Failed = $statusCode >= 400;
+
             if ($location) {
                 $locationHttps = str_starts_with($location, 'https://');
                 $redirectResponse = HeartBeatService::headLocationStatus($location);
@@ -119,6 +124,9 @@ class Response extends DataObject
                 $statusCode = $redirectResponse->getStatusCode();
                 $protocolVersion = $redirectResponse->getProtocolVersion();
                 $reasonPhrase = $redirectResponse->getReasonPhrase();
+                $newResponse->IMServer = isset($redirectResponse->getHeader('x-innis-server')[0]);
+            } else {
+                $newResponse->IMServer = isset($response->getHeader('x-innis-server')[0]);
             }
 
             $newResponse->StatusCode = $statusCode;
